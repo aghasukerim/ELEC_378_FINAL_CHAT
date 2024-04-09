@@ -1,0 +1,79 @@
+import librosa
+import librosa.display
+import IPython.display as idp
+import matplotlib.pyplot as plt
+import numpy as np
+import csv
+from sklearn.decomposition import PCA
+from sklearn import preprocessing
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+
+def mfcc_feature_vector(file_name):
+  signal, sr = librosa.load(file_name)
+  mfccs = librosa.feature.mfcc(y=signal, n_mfcc=13, sr=sr)
+  ###We are going to try adding the deltas for more info
+  # delta_mfccs = librosa.feature.delta(mfccs)
+  # delta2_mfccs = librosa.feature.delta(mfccs, order=2)
+  # mfccs_features = np.concatenate((mfccs, delta_mfccs, delta2_mfccs))
+  mfcc_feature_vector = mfccs.flatten()
+  return mfcc_feature_vector
+
+#find the min to make consistent matrix
+X_len_list = []
+for i in range(100, 800):
+  file_name = 'train' + str(i) + '.wav'
+  X_len_list.append(len(mfcc_feature_vector(file_name)))
+min_len = min(X_len_list)
+
+X = []
+# for i in range(10):
+#   file_name = 'train' + '00' + str(i) + '.wav'
+#   X.append(mfcc_feature_vector(file_name)[:16770])
+# for i in range(10, 100):
+#   file_name = 'train' + '0' + str(i) + '.wav'
+#   X.append(mfcc_feature_vector(file_name)[:16770])
+for i in range(100, 800):
+  file_name = 'train' + str(i) + '.wav'
+  X.append(mfcc_feature_vector(file_name)[:min_len])
+
+  y = []
+
+# Open the CSV file
+with open('train.csv', 'r') as file:
+    # Create a CSV reader object
+    reader = csv.reader(file)
+    # Iterate over each row in the CSV file
+    for row in reader:
+        # Process each row
+        #print(row)  # Example: Print each row
+        y.append(row[1])
+    y.pop(0)
+
+y_train = y[100:]
+
+clf = make_pipeline(StandardScaler(), SVC(gamma='auto'))
+clf.fit(X, y_train)
+
+Prediction_matrix = []
+Xtest = []
+percent_correct = 0
+
+for i in range(10):
+  file_name = 'train' + '00' + str(i) + '.wav'
+  Xtest.append(mfcc_feature_vector(file_name)[:16770])
+  #print(clf.predict([Xtest[i]]), y[i])
+  if clf.predict([Xtest[i]])[0] == str(y[i]):
+    percent_correct += 1
+
+for i in range(10, 100):
+  file_name = 'train' + '0' + str(i) + '.wav'
+  Xtest.append(mfcc_feature_vector(file_name)[:16770])
+  #print(clf.predict([Xtest[i]]), y[i])
+  if clf.predict([Xtest[i]])[0] == str(y[i]):
+    percent_correct += 1
+
+percent_correct = percent_correct/100
+print('percent_correct is', percent_correct)
+
